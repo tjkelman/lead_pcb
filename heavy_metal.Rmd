@@ -1,0 +1,76 @@
+---
+title: "heavy_metal"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Setup
+
+Loading the necessary libraries (the tidyverse & googlesheets)
+
+```{r libraries, echo=FALSE, results='hide'}
+library(tidyverse)
+library(googlesheets)
+library(rlist)
+```
+
+## Identifying and loading the googlesheet
+
+```{r googlesheet, echo=FALSE}
+sheet_meta <- gs_title("Pb/PBDE/PCB Egg Submissions")
+sheet_data <- gs_read(sheet_meta, ws = "Heavy Metal Results", col_names = TRUE)
+```
+
+## Identifying which metals we want
+
+```{r metal_list, echo=FALSE}
+metals <- c("Cr", "Fe", "Zn", "As", "Ni", "Cu", "Cd", "Hg", "Pb")
+```
+
+## 
+
+```{r select generation}
+query <- list("Zip", "County", "Dilution/Digestion Factor")
+for (v in metals) {
+  next_query <- paste0(', ',v, ' ppm')
+  list.append(query, next_query)  
+  next_query <- paste0(', DL (', v, ')')
+  list.append(query, next_query)
+}
+```
+
+## Select just the lead data by zip & county
+```{r setup, echo=FALSE}
+lead_subset <- sheet_data %>% 
+  # select(Zip, County, "Dilution/Digestion Factor", "Pb ppm", "DL (Pb)") %>%
+  select_(.dots = query) %>%
+  rename(ZipPlusFour = Zip) %>%
+  mutate(Zip = str_sub(ZipPlusFour, 1, 5), ug_per_57g = `Pb ppm` * 57) %>%
+  mutate(County = str_to_upper(County)) %>%
+  select(-ZipPlusFour)
+```
+
+
+## Now group by zipcode and perform a mean and max on the Pb ppm
+```{r setup, echo=FALSE}
+lead_summary_zip <- lead_subset  %>% 
+  drop_na(Zip) %>%
+  group_by(Zip) %>% 
+  summarize(pb_mean = mean(ug_per_57g), pb_max = max(ug_per_57g), n=n())
+```
+
+## Now group by county and perform a mean and max on the Pb ppm
+```{r setup, echo=FALSE}
+lead_summary_county <- lead_subset  %>% 
+  drop_na(County) %>%
+  group_by(County) %>% 
+  summarize(pb_mean = mean(ug_per_57g), pb_max = max(ug_per_57g), n=n())
+```
+
+## Write out the data
+```{r setup, echo=FALSE}
+write_csv(lead_summary_county, "lead_summary_county.csv")
+```

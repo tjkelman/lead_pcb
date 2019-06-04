@@ -1,0 +1,87 @@
+--- 
+title: "Heavy Metal Analysis Notebook"
+author: "Todd Kelman"
+date: "2/12/2019"
+output: html_notebook
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(tidyverse)
+library(googlesheets)
+library(readxl)
+library(janitor)
+```
+
+
+```{r sheet processing, include = FALSE}
+# open Pb/PBDE/PCB Egg Submissions using the direct key since googlesheets package can't
+# use gs_title (or gs_ls()) for Team Drives:
+sheet_meta <- gs_key("1kgXukJLuWqII972QHkFm5o8JutPybPZZ-_UTRa2oOfk", lookup = FALSE, visibility = "private")
+sheet_data <- gs_read(sheet_meta, ws = "HVM Values Only", col_names = TRUE, skip = 0, verbose = TRUE, literal = FALSE)
+premise_directory <- read_excel("Data/Premise_Directory 9-4-18 geocoded.xls")
+
+cn_sheet_data <- clean_names(sheet_data)
+cn_premise_directory <- clean_names(premise_directory)
+```
+
+```{r extact_data, , include = FALSE}
+# extract the metals of interest
+metal_subset <- cn_sheet_data %>% 
+  select(bp_id, sample_id, zip, county, matches("57g")) %>%
+  mutate(zip = str_sub(as.character(zip), 1, 5)) %>%      # convert from zip+5 to just zip
+  mutate(county = str_to_upper(county)) %>%
+  mutate(premise_id = str_extract(sample_id, "[^-]+")) 
+```
+
+## Assessing variance
+
+The first step is assessing the variability in lead concentrations in eggs submitted
+from the same premise.  The following graph is for non-commercial premises submitting
+at least 5 eggs, with each lead value represented as a dot superimposed on a
+standard boxplot showing median and quartile values
+
+```{r variance_5plus_eggs}
+metal_subset %>% 
+  add_count(premise_id) %>% 
+  filter(n>4) %>% 
+  filter(!str_detect(tolower(premise_id), pattern = "c")) %>% 
+  mutate(premise_id = as.integer(premise_id)) %>% 
+  arrange(premise_id) %>% 
+  ggplot(mapping = aes(x = factor(premise_id), y = pb_ug_57g)) +
+    geom_boxplot() +
+    geom_dotplot(binaxis='y', 
+                stackdir='center', 
+                dotsize = 5, 
+                binwidth = .02,
+                fill="red") +
+    labs(x = "Premise ID", y = "ug Pb per 57g egg", 
+         title = "Lead values for noncommercial premises with at least 5 eggs submitted")
+```
+
+So it looks like about half the samples are exhibiting high variability, which 
+has implications for pooling and how we should evaluate the non-pooled vs. pooled
+data.  
+  
+Here is the identical analysis for premises with two to four eggs:  
+
+```{r variance_2to4_eggs}
+metal_subset %>% 
+  add_count(premise_id) %>% 
+  filter(n>1, n<5) %>% 
+  filter(!str_detect(tolower(premise_id), pattern = "c")) %>% 
+  mutate(premise_id = as.integer(premise_id)) %>% 
+  arrange(premise_id) %>% 
+  ggplot(mapping = aes(x = factor(premise_id), y = pb_ug_57g)) +
+  geom_boxplot() +
+  geom_dotplot(binaxis='y', 
+               stackdir='center', 
+               dotsize = 3, 
+               binwidth = .02,
+               fill="red") +
+  labs(x = "Premise ID", y = "ug Pb per 57g egg", 
+       title = "Lead values for noncommercial premises with 2-4 eggs submitted")
+```
+
+...which shows a very similar pattern:  fairly high variability between submissions.

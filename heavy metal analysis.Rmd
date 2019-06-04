@@ -1,0 +1,132 @@
+---
+title: "Heavy Metal Analysis"
+author: "Todd Kelman"
+date: "2/12/2019"
+output: html_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(tidyverse)
+library(googlesheets)
+library(readxl)
+library(janitor)
+```
+
+
+```{r sheet processing, include = FALSE}
+# open Pb/PBDE/PCB Egg Submissions using the direct key since googlesheets package can't
+# use gs_title (or gs_ls()) for Team Drives:
+sheet_meta <- gs_key("16iR75UiNn_PPle-ORK9sVbWFUJPlVIuHBhQlEJ9Ayuk", lookup = FALSE, visibility = "private")
+sheet_data <- gs_read(sheet_meta, ws = "HVM Results", col_names = TRUE, skip = 0, verbose = TRUE, literal = FALSE)
+premise_directory <- read_excel("Data/Premise_Directory 9-4-18 geocoded.xls")
+
+cn_sheet_data <- clean_names(sheet_data)
+cn_premise_directory <- clean_names(premise_directory)
+```
+
+```{r extact_data}
+# extract the metals of interest
+metal_subset <- cn_sheet_data %>% 
+  select(bp_id, sample_id, zip, county, matches("57g")) %>%
+  mutate(zip = str_sub(as.character(zip), 1, 5)) %>%      # convert from zip+5 to just zip
+  mutate(county = str_to_upper(county)) %>%
+  mutate(premise_id = str_extract(sample_id, "[^-]+")) 
+```
+
+## Assessing variance
+
+The first step is assessing the variability in lead concentrations in eggs submitted
+from the same premise.  The following graph is for non-commercial premises submitting
+at least 5 eggs, with each lead value represented as a dot superimposed on a
+standard boxplot showing median and quartile values
+
+```{r variance_pb_5plus_eggs}
+cv_label <- function(x) {
+  return(data.frame(y = max(x) + 0.5, 
+                    label = paste0(round(sd(x)/mean(x)*100, 1), "%")))
+}
+
+metal_subset %>% 
+  add_count(premise_id) %>% 
+  filter(n>4) %>% 
+  filter(!str_detect(tolower(premise_id), pattern = "c")) %>% 
+  mutate(premise_id = as.integer(premise_id)) %>% 
+  arrange(premise_id) %>% 
+  ggplot(mapping = aes(x = factor(premise_id), y = pb_ug_57g)) +
+    geom_boxplot() +
+    geom_dotplot(binaxis='y', 
+                stackdir='center', 
+                dotsize = 5, 
+                binwidth = .02,
+                fill="red") +
+    stat_summary(fun.data = "cv_label", geom = "text", colour = "blue", size = 2) +
+    stat_summary(fun.y = mean, geom = "point", colour = "purple", size = 1.5) +
+    labs(x = "Premise ID", y = "ug Pb per 57g egg", 
+         title = "Lead values for noncommercial premises with at least 5 eggs submitted (blue = CV%, purple = mean)") +
+    theme(title=element_text(size=8,face="bold"), plot.title = element_text(hjust = 0.5))
+    
+    
+```
+
+Ideally the CV should be less than 20% (if replicates of the **same** sample then
+less than 10%), so it looks like a large number of the submissions
+are exhibiting high variability. Practically if all the values are less than 1ug it really is inconsequential - it's only a concern when the values approach level of concern. Variability in high valued samples has implications for pooling and how we 
+should evaluate the non-pooled vs. pooled data. So far with our unpooled sample we've been
+reporting maximum values, which given the high variability will make for a difficult
+comparison to our pooled values (and awkward justification for pooling, apart from
+our lack of funds).  We may need to backtrack and report mean values for the unpooled
+samples to facilitate comparison across the two groups.
+  
+Here is the identical analysis for premises with two to four eggs:  
+
+```{r variance_pb_2to4_eggs}
+metal_subset %>% 
+  add_count(premise_id) %>% 
+  filter(n>1, n<5) %>% 
+  filter(!str_detect(tolower(premise_id), pattern = "c")) %>% 
+  mutate(premise_id = as.integer(premise_id)) %>% 
+  arrange(premise_id) %>% 
+  ggplot(mapping = aes(x = factor(premise_id), y = pb_ug_57g)) +
+    geom_boxplot() +
+    geom_dotplot(binaxis='y', 
+                stackdir='center', 
+                dotsize = 3, 
+                binwidth = .02,
+                fill="red") +
+    stat_summary(fun.data = "cv_label", geom = "text", colour = "blue", size = 2) +
+    stat_summary(fun.y = mean, geom = "point", colour = "purple", size = 1.5) +
+    labs(x = "Premise ID", y = "ug Pb per 57g egg", 
+         title = "Lead values for noncommercial premises with 2-4 eggs submitted (blue = CV%, purple = mean)") +
+    theme(title = element_text(size=8,face="bold"), 
+          plot.title = element_text(hjust = 0.5))
+    
+```
+
+Cadmium values appear similar.  We have far fewer premises in this graph as
+may of the cadmium values were below threshold.
+
+```{r variance_cd_2plus_eggs}
+metal_subset %>% 
+  filter(!str_detect(tolower(premise_id), pattern = "c")) %>% 
+  filter(!is.na(cd_ug_57g)) %>% 
+  add_count(premise_id) %>% 
+  filter(n > 1) %>% 
+  mutate(premise_id = as.integer(premise_id)) %>% 
+  arrange(premise_id) %>% 
+  ggplot(mapping = aes(x = factor(premise_id), y = cd_ug_57g)) +
+  geom_boxplot() +
+  geom_dotplot(binaxis='y', 
+               stackdir='center', 
+               dotsize = 2, 
+               binwidth = .02,
+               fill="red") +
+  stat_summary(fun.data = "cv_label", geom = "text", colour = "blue", size = 2) +
+  stat_summary(fun.y = mean, geom = "point", colour = "purple", size = 1.5) +
+  labs(x = "Premise ID", y = "ug Cd per 57g egg", 
+       title = "Cadmium values for noncommercial premises with at least 2 eggs submitted (blue = CV%, purple = mean)") +
+  theme(title = element_text(size=8,face="bold"), 
+        plot.title = element_text(hjust = 0.5))
+```
+
