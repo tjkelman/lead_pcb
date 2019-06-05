@@ -12,6 +12,7 @@ library(ggthemes)
 library(here)
 library(hrbrthemes)
 library(gghighlight)
+library(usethis)
 
 # sheet_meta <- gs_title("Pb/PBDE/PCB Egg Submissions")
 
