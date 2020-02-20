@@ -4,7 +4,8 @@
 # install.packages(my_packages)
 
 library(tidyverse)
-library(googlesheets)
+library(googledrive)
+library(googlesheets4)
 library(readxl)
 library(janitor)
 library(stringr)
@@ -14,14 +15,20 @@ library(hrbrthemes)
 library(gghighlight)
 library(usethis)
 
+sheet_file <- drive_get(id="16iR75UiNn_PPle-ORK9sVbWFUJPlVIuHBhQlEJ9Ayuk", 
+                        team_drive = "Pitesky Lab")
+sheet_data <- read_sheet(sheet_file, sheet = "HVM Results", col_names = TRUE,
+                         skip = 0)
+premise_directory <- read_excel("../Data/Premise_Directory 4-25-19 geocoded.xlsx")
+
 # sheet_meta <- gs_title("Pb/PBDE/PCB Egg Submissions")
 
 # open Pb/PBDE/PCB Egg Submissions using the direct key since googlesheets package can't
 # use gs_title (or gs_ls()) for Team Drives:
 
-sheet_meta <- gs_key("16iR75UiNn_PPle-ORK9sVbWFUJPlVIuHBhQlEJ9Ayuk", lookup = FALSE, visibility = "private")
-sheet_data <- gs_read(sheet_meta, ws = "HVM Results", col_names = TRUE, skip = 0, verbose = TRUE, literal = FALSE)
-premise_directory <- read_excel("Data/Premise_Directory 4-25-19 geocoded.xlsx")
+
+# sheet_meta <- gs_key("16iR75UiNn_PPle-ORK9sVbWFUJPlVIuHBhQlEJ9Ayuk", lookup = FALSE, visibility = "private")
+# sheet_data <- gs_read(sheet_meta, ws = "HVM Results", col_names = TRUE, skip = 0, verbose = TRUE, literal = FALSE)
 # premise_directory <- gs_read(sheet_meta, ws = "Premise Directory", col_names = TRUE, skip = 0, verbose = TRUE, literal = FALSE)
 
 # metals <- c("Cr ppm", "Fe ppm", "Zn ppm", "As ppm", "Ni ppm", "Cu ppm", "Cd ppm", "Hg ppm", "Pb ppm")
@@ -37,9 +44,9 @@ metal_subset <- cn_sheet_data %>%
   mutate(premise_id = str_extract(sample_id, "[^-]+"))
 
 # what percentage of samples had Pb exceed repro daily threshold?
-# mean(metal_subset$Pb_ug > 0.5)
+#mean(metal_subset$pb_ug > 0.5)
 # what percentage of samples had Cd exceed toxic daily threshold?
-# mean(metal_subset$Cd_ug > 4.1)
+#mean(metal_subset$Cd_ug > 4.1)
 
 cv_label <- function(x, ...) {
   args = list(...)
@@ -51,68 +58,68 @@ premise_metal_subset <- metal_subset %>%
   add_count(premise_id)
 
 # variances in Pb for >=5 eggs:
-premise_metal_subset %>% 
-  filter(n>5) %>% 
-  filter(!str_detect(tolower(premise_id), pattern = "c")) %>% 
-  mutate(premise_id = as.integer(premise_id)) %>% 
-  arrange(premise_id) %>% 
-  ggplot(mapping = aes(x = factor(premise_id), y = pb_ug_57g)) +
-    geom_boxplot() +
-    geom_dotplot(binaxis='y', 
-                stackdir='center', 
-                dotsize = 5, 
-                binwidth = .02,
-                fill="red") +
-    stat_summary(fun.data = "cv_label", geom = "text", colour = "blue", size = 2, 
-                 fun.args = list(nudge = 0.5)) +
-    stat_summary(fun.y = mean, geom = "point", colour = "purple", size = 1.5) +
-    labs(x = "Premise ID", y = "ug Pb per 57g egg", 
-         title = "Lead values for noncommercial premises with at least 5 eggs submitted (blue = CV%, purple = mean)") +
-    theme(title = element_text(size=8,face="bold"), 
-          plot.title = element_text(hjust = 0.5))
+# premise_metal_subset %>% 
+#   filter(n>5) %>% 
+#   filter(!str_detect(tolower(premise_id), pattern = "c")) %>% 
+#   mutate(premise_id = as.integer(premise_id)) %>% 
+#   arrange(premise_id) %>% 
+#   ggplot(mapping = aes(x = factor(premise_id), y = pb_ug_57g)) +
+#     geom_boxplot() +
+#     geom_dotplot(binaxis='y', 
+#                 stackdir='center', 
+#                 dotsize = 5, 
+#                 binwidth = .02,
+#                 fill="red") +
+#     stat_summary(fun.data = "cv_label", geom = "text", colour = "blue", size = 2, 
+#                  fun.args = list(nudge = 0.5)) +
+#     stat_summary(fun.y = mean, geom = "point", colour = "purple", size = 1.5) +
+#     labs(x = "Premise ID", y = "ug Pb per 57g egg", 
+#          title = "Lead values for noncommercial premises with at least 5 eggs submitted (blue = CV%, purple = mean)") +
+#     theme(title = element_text(size=8,face="bold"), 
+#           plot.title = element_text(hjust = 0.5))
     
 
 # variances in Pb for 3-4 eggs:
-premise_metal_subset %>% 
-  filter(n>2, n<5) %>% 
-  filter(!str_detect(tolower(premise_id), pattern = "c")) %>% 
-  mutate(premise_id = as.integer(premise_id)) %>% 
-  arrange(premise_id) %>% 
-  ggplot(mapping = aes(x = factor(premise_id), y = pb_ug_57g)) +
-  geom_boxplot() +
-  geom_dotplot(binaxis='y',
-               stackdir='center',
-               dotsize = 20,
-               binwidth = .02,
-               fill="red") +
-  stat_summary(fun.data = "cv_label", geom = "text", colour = "blue", size = 2,
-               fun.args = list(nudge = 1.5)) +
-  stat_summary(fun.y = mean, geom = "point", colour = "purple", size = 1.5) +
-  labs(x = "Premise ID", y = "ug Pb per 57g egg", 
-       title = "Lead values for noncommercial premises with 3-4 eggs submitted (blue = CV%, purple = mean)") +
-  theme(title = element_text(size=8,face="bold"), 
-        plot.title = element_text(hjust = 0.5)) 
+# premise_metal_subset %>% 
+#   filter(n>2, n<5) %>% 
+#   filter(!str_detect(tolower(premise_id), pattern = "c")) %>% 
+#   mutate(premise_id = as.integer(premise_id)) %>% 
+#   arrange(premise_id) %>% 
+#   ggplot(mapping = aes(x = factor(premise_id), y = pb_ug_57g)) +
+#   geom_boxplot() +
+#   geom_dotplot(binaxis='y',
+#                stackdir='center',
+#                dotsize = 20,
+#                binwidth = .02,
+#                fill="red") +
+#   stat_summary(fun.data = "cv_label", geom = "text", colour = "blue", size = 2,
+#                fun.args = list(nudge = 1.5)) +
+#   stat_summary(fun.y = mean, geom = "point", colour = "purple", size = 1.5) +
+#   labs(x = "Premise ID", y = "ug Pb per 57g egg", 
+#        title = "Lead values for noncommercial premises with 3-4 eggs submitted (blue = CV%, purple = mean)") +
+#   theme(title = element_text(size=8,face="bold"), 
+#         plot.title = element_text(hjust = 0.5)) 
          
 # variances in Pb for 2 eggs:
-premise_metal_subset %>% 
-  filter(n==2) %>% 
-  filter(!str_detect(tolower(premise_id), pattern = "c")) %>% 
-  mutate(premise_id = as.integer(premise_id)) %>% 
-  arrange(premise_id) %>% 
-  ggplot(mapping = aes(x = factor(premise_id), y = pb_ug_57g)) +
-  geom_boxplot() +
-  geom_dotplot(binaxis='y', 
-               stackdir='center', 
-               dotsize = 5, 
-               binwidth = .02,
-               fill="red") +
-  stat_summary(fun.data = "cv_label", geom = "text", colour = "blue", size = 2,
-               fun.args = list(nudge = 0.5)) +
-  stat_summary(fun.y = mean, geom = "point", colour = "purple", size = 1.5) +
-  labs(x = "Premise ID", y = "ug Pb per 57g egg", 
-       title = "Lead values for noncommercial premises with 2 eggs submitted (blue = CV%, purple = mean)") +
-  theme(title = element_text(size=8,face="bold"), 
-        plot.title = element_text(hjust = 0.5)) 
+# premise_metal_subset %>% 
+  # filter(n==2) %>% 
+  # filter(!str_detect(tolower(premise_id), pattern = "c")) %>% 
+  # mutate(premise_id = as.integer(premise_id)) %>% 
+  # arrange(premise_id) %>% 
+  # ggplot(mapping = aes(x = factor(premise_id), y = pb_ug_57g)) +
+  # geom_boxplot() +
+  # geom_dotplot(binaxis='y', 
+  #              stackdir='center', 
+  #              dotsize = 5, 
+  #              binwidth = .02,
+  #              fill="red") +
+  # stat_summary(fun.data = "cv_label", geom = "text", colour = "blue", size = 2,
+  #              fun.args = list(nudge = 0.5)) +
+  # stat_summary(fun.y = mean, geom = "point", colour = "purple", size = 1.5) +
+  # labs(x = "Premise ID", y = "ug Pb per 57g egg", 
+  #      title = "Lead values for noncommercial premises with 2 eggs submitted (blue = CV%, purple = mean)") +
+  # theme(title = element_text(size=8,face="bold"), 
+  #       plot.title = element_text(hjust = 0.5)) 
 
 
 # what percentage of noncommerical premises had max Pb exceed FDA child recommendation?
@@ -127,7 +134,7 @@ noncom_premise_summary <- premise_metal_subset %>%
 # available for mapping:
 # geocoded_metal_subset <- left_join(cn_premise_metal_subset, premise_directory, by = "premise_id")
 noncom_premise_join <- left_join(noncom_premise_summary, cn_premise_directory, by = "premise_id")
-com_premise_join <- left_join(com_premise_summary, cn_premise_directory, by = "premise_id")
+# com_premise_join <- left_join(com_premise_summary, cn_premise_directory, by = "premise_id")
 
 
 # summarize mean and max of all the metals grouped by county
@@ -216,6 +223,27 @@ noncom_premise_join %>%
           legend.text = element_text(size = 12))
 
 ggsave("Plots/lead_histogram_sonoma.png")
+
+noncom_premise_join %>% 
+  ggplot(aes(x = pb_ug_57g_mean)) +
+  geom_histogram(bins = 100, size = 0, fill = "orange") +
+  gghighlight(arc_subreg == "Ventura") +
+  geom_vline(aes(xintercept = 3, color = "FDA Child Threshold")) +
+  geom_vline(aes(xintercept = 12.5, color = "FDA Adult Threshold")) +
+  labs(x = "Amount of lead (micrograms) in an average sized egg", y = "Number of premises",
+       title = "Mean lead values per premise", 
+       subtitle = "non-commercial residences only (Ventura county highlighted)") +
+  scale_color_manual(name = "",
+                     values = c('FDA Child Threshold' = "red",
+                                'FDA Adult Threshold' = "blue")) +
+  annotate("rect", xmin = 21, xmax = 28, ymin = 51, ymax = 74, fill = "white", color = "white") +
+  theme_ipsum(base_size = 12) +
+  theme(legend.position = c(0.80, 0.51),
+        axis.title.x = element_text(size = 12, vjust = -2),
+        axis.title.y = element_text(size = 12),
+        legend.text = element_text(size = 12))
+
+ggsave("../Plots/lead_histogram_ventura.png")
 
 noncom_premise_join %>% 
   ggplot(aes(x = pb_ug_57g_mean)) +
