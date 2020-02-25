@@ -175,6 +175,20 @@ nrow(noncom_premise_summary)
 sum(noncom_premise_summary$pb_ug_57g_mean > 3)
 mean(noncom_premise_summary$pb_ug_57g_mean > 3)
 
+noncom_premise_summary_ventura <- noncom_premise_join %>% 
+  filter(arc_subreg == "Ventura") 
+nrow(noncom_premise_summary_ventura)
+sum(noncom_premise_summary_ventura$pb_ug_57g_mean > 3)
+mean(noncom_premise_summary_ventura$pb_ug_57g_mean > 3)
+
+
+noncom_premise_summary_sb <- noncom_premise_join %>% 
+  filter(arc_subreg == "Santa Barbara") 
+nrow(noncom_premise_summary_sb)
+sum(noncom_premise_summary_sb$pb_ug_57g_mean > 3)
+mean(noncom_premise_summary_sb$pb_ug_57g_mean > 3)
+
+
 noncom_premise_join %>% 
   ggplot(aes(x = pb_ug_57g_mean)) +
   geom_histogram(bins = 100, size = 0) +
@@ -201,7 +215,7 @@ noncom_premise_join %>%
         axis.title.y = element_text(size = 12),
         legend.text = element_text(size = 12))
 
-ggsave("Plots/lead_histogram.png")
+ggsave("../Plots/lead_histogram_new.png")
 
 noncom_premise_join %>% 
   ggplot(aes(x = pb_ug_57g_mean)) +
@@ -222,7 +236,7 @@ noncom_premise_join %>%
           axis.title.y = element_text(size = 12),
           legend.text = element_text(size = 12))
 
-ggsave("Plots/lead_histogram_sonoma.png")
+ggsave("../Plots/lead_histogram_sonoma_new.png")
 
 noncom_premise_join %>% 
   ggplot(aes(x = pb_ug_57g_mean)) +
@@ -235,7 +249,7 @@ noncom_premise_join %>%
        subtitle = "non-commercial residences only (Ventura county highlighted)") +
   scale_color_manual(name = "",
                      values = c('FDA Child Threshold' = "red",
-                                'FDA Adult Threshold' = "blue")) +
+                                'FDA Adult Threshold' = "blue")) + 
   annotate("rect", xmin = 21, xmax = 28, ymin = 51, ymax = 74, fill = "white", color = "white") +
   theme_ipsum(base_size = 12) +
   theme(legend.position = c(0.80, 0.51),
@@ -244,6 +258,28 @@ noncom_premise_join %>%
         legend.text = element_text(size = 12))
 
 ggsave("../Plots/lead_histogram_ventura.png")
+
+noncom_premise_join %>% 
+  ggplot(aes(x = pb_ug_57g_mean)) +
+  geom_histogram(bins = 100, size = 0, fill = "orange") +
+  gghighlight(arc_subreg == "Santa Barbara") +
+  geom_vline(aes(xintercept = 3, color = "FDA Child Threshold")) +
+  geom_vline(aes(xintercept = 12.5, color = "FDA Adult Threshold")) +
+  labs(x = "Amount of lead (micrograms) in an average sized egg", y = "Number of premises",
+       title = "Mean lead values per premise", 
+       subtitle = "non-commercial residences only (Santa Barbara county highlighted)") +
+  scale_color_manual(name = "",
+                     values = c('FDA Child Threshold' = "red",
+                                'FDA Adult Threshold' = "blue")) + 
+  annotate("rect", xmin = 21, xmax = 28, ymin = 51, ymax = 74, fill = "white", color = "white") +
+  theme_ipsum(base_size = 12) +
+  theme(legend.position = c(0.80, 0.51),
+        axis.title.x = element_text(size = 12, vjust = -2),
+        axis.title.y = element_text(size = 12),
+        legend.text = element_text(size = 12))
+
+ggsave("../Plots/lead_histogram_sb.png")
+
 
 noncom_premise_join %>% 
   ggplot(aes(x = pb_ug_57g_mean)) +
@@ -285,7 +321,7 @@ noncom_premise_join %>%
         axis.title.y = element_text(size = 12),
         legend.text = element_text(size = 12))
 
-ggsave("Plots/lead_histogram_napa.png")
+ggsave("../Plots/lead_histogram_napa_new.png")
 
 hg_rel <- noncom_premise_summary %>%
   summarise(hg_rel = ceiling(11.2/ hg_ug_57g_mean)) %>% 
